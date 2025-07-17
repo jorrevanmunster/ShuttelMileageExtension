@@ -18,11 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mileageHistoryDiv = document.getElementById('mileageHistory');
     const statusMessage = document.getElementById('statusMessage');
 
-    const lastYearSummaryDiv = document.getElementById('lastYearSummary');
-    const lastYearTotalSpan = document.getElementById('lastYearTotal');
-    const lastYearWorkSpan = document.getElementById('lastYearWork');
-    const lastYearPrivateSpan = document.getElementById('lastYearPrivate');
-
     logCarChangeBtn.addEventListener('click', () => {
         carChangeForm.classList.toggle('hidden');
     });
@@ -293,21 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 workSpan: overviewWorkSpan,
                 privateSpan: overviewPrivateSpan
             });
-
-            const lastYear = selectedYear - 1;
-            const lastYearOption = yearSelector.querySelector(`option[value="${lastYear}"]`);
-
-            if (lastYearOption) {
-                lastYearSummaryDiv.classList.remove('hidden');
-                const lastYearData = calculateMileage(mileageHistory, workData, carChanges, lastYear);
-                displayYearData(lastYearData, {
-                    totalSpan: lastYearTotalSpan,
-                    workSpan: lastYearWorkSpan,
-                    privateSpan: lastYearPrivateSpan
-                });
-            } else {
-                lastYearSummaryDiv.classList.add('hidden');
-            }
         });
     }
 
