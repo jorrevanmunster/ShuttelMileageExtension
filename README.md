@@ -2,6 +2,14 @@
 
 An extension to help track private and work-related mileage for Shuttel users.
 
+## Screenshots
+
+![Extension Overview](screenshots/Screenshot%202025-07-17%20at%2009.48.22.png)
+*The main interface of the extension.*
+
+![Shuttel Portal](screenshots/Screenshot%202025-07-17%20at%2009.49.14.png)
+*The Shuttel portal where the work mileage data is fetched from.*
+
 ## Features
 
 - **Automatic Work Mileage Fetching:** Extracts work-related mileage data directly from the Shuttel portal.
