@@ -82,7 +82,8 @@
             font-weight: 500;
         }
         .input-group input[type="number"],
-        .input-group input[type="date"] {
+        .input-group input[type="date"],
+        .input-group select {
             width: 100%;
             padding: 0.5rem;
             border: 1px solid #cbd5e0;
@@ -108,8 +109,13 @@
     <div class="container bg-white rounded-lg">
         <h1 class="text-xl font-bold text-center mb-4 text-blue-700">Mileage Overview</h1>
 
+        <div class="input-group">
+            <label for="yearSelector">Tracking Year:</label>
+            <select id="yearSelector"></select>
+        </div>
+
         <div class="mb-4 p-3 bg-blue-100 rounded-md">
-            <div class="section-title">Tracking Year Overview (Jul 1 - Jun 30)</div>
+            <div class="section-title">Overview</div>
             <div class="data-item">
                 <span class="data-label">Total Driven:</span>
                 <span id="overviewTotal" class="data-value font-semibold">N/A</span>
@@ -124,10 +130,20 @@
             </div>
         </div>
 
-        <div class="mt-6 p-3 bg-gray-100 rounded-md">
-            <div class="section-title">Shuttel Data</div>
-            <button id="fetchWorkMileageBtn" class="action-button bg-green-500 hover:bg-green-600">Fetch Work Mileage from Shuttel</button>
-            <div id="loadingIndicator" class="loading-spinner mt-4 hidden"></div>
+        <div class="mb-4 p-3 bg-yellow-100 rounded-md hidden" id="lastYearSummary">
+            <div class="section-title">Last Year's Summary</div>
+            <div class="data-item">
+                <span class="data-label">Total Driven:</span>
+                <span id="lastYearTotal" class="data-value font-semibold">N/A</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label">Work KM:</span>
+                <span id="lastYearWork" class="data-value font-semibold">N/A</span>
+            </div>
+            <div class="data-item">
+                <span class="data-label">Private KM:</span>
+                <span id="lastYearPrivate" class="data-value font-semibold">N/A</span>
+            </div>
         </div>
 
         <div class="mt-6 p-3 bg-gray-100 rounded-md">
@@ -144,6 +160,32 @@
         </div>
 
         <div class="mt-6 p-3 bg-gray-100 rounded-md">
+            <div class="section-title">Car Management</div>
+            <button id="logCarChangeBtn" class="action-button bg-orange-500 hover:bg-orange-600">Log Car Change</button>
+            <div id="carChangeForm" class="hidden mt-4">
+                <div class="input-group">
+                    <label for="changeDate">Date of Change:</label>
+                    <input type="date" id="changeDate">
+                </div>
+                <div class="input-group">
+                    <label for="oldCarFinalKm">Final KM of Old Car:</label>
+                    <input type="number" id="oldCarFinalKm" placeholder="e.g., 57215">
+                </div>
+                <div class="input-group">
+                    <label for="newCarStartKm">Start KM of New Car:</label>
+                    <input type="number" id="newCarStartKm" placeholder="e.g., 90">
+                </div>
+                <button id="saveCarChangeBtn" class="action-button bg-blue-500 hover:bg-blue-600">Save Car Change</button>
+            </div>
+        </div>
+
+        <div class="mt-6 p-3 bg-gray-100 rounded-md">
+            <div class="section-title">Shuttel Data</div>
+            <button id="fetchWorkMileageBtn" class="action-button bg-green-500 hover:bg-green-600">Fetch Work Mileage from Shuttel</button>
+            <div id="loadingIndicator" class="loading-spinner mt-4 hidden"></div>
+        </div>
+
+        <div class="mt-6 p-3 bg-gray-100 rounded-md">
             <div class="section-title">Odometer History</div>
             <div id="mileageHistory" class="text-sm">
                 <p class="text-gray-600">No readings saved yet.</p>
@@ -152,6 +194,7 @@
         <p id="statusMessage" class="text-center text-sm text-red-500 mt-2"></p>
 
     </div>
+    <script src="calculations.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

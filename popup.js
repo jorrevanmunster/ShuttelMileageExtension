@@ -4,12 +4,93 @@ document.addEventListener('DOMContentLoaded', () => {
     const manualDateInput = document.getElementById('manualDate');
     const fetchWorkMileageBtn = document.getElementById('fetchWorkMileageBtn');
     const loadingIndicator = document.getElementById('loadingIndicator');
+    const yearSelector = document.getElementById('yearSelector');
+    const logCarChangeBtn = document.getElementById('logCarChangeBtn');
+    const carChangeForm = document.getElementById('carChangeForm');
+    const saveCarChangeBtn = document.getElementById('saveCarChangeBtn');
+    const changeDateInput = document.getElementById('changeDate');
+    const oldCarFinalKmInput = document.getElementById('oldCarFinalKm');
+    const newCarStartKmInput = document.getElementById('newCarStartKm');
 
     const overviewTotalSpan = document.getElementById('overviewTotal');
     const overviewWorkSpan = document.getElementById('overviewWork');
     const overviewPrivateSpan = document.getElementById('overviewPrivate');
     const mileageHistoryDiv = document.getElementById('mileageHistory');
     const statusMessage = document.getElementById('statusMessage');
+
+    const lastYearSummaryDiv = document.getElementById('lastYearSummary');
+    const lastYearTotalSpan = document.getElementById('lastYearTotal');
+    const lastYearWorkSpan = document.getElementById('lastYearWork');
+    const lastYearPrivateSpan = document.getElementById('lastYearPrivate');
+
+    logCarChangeBtn.addEventListener('click', () => {
+        carChangeForm.classList.toggle('hidden');
+    });
+
+    saveCarChangeBtn.addEventListener('click', () => {
+        const changeDate = changeDateInput.value;
+        const oldCarFinalKm = parseFloat(oldCarFinalKmInput.value);
+        const newCarStartKm = parseFloat(newCarStartKmInput.value);
+
+        if (!changeDate || isNaN(oldCarFinalKm) || isNaN(newCarStartKm)) {
+            statusMessage.textContent = 'Please fill in all fields for the car change.';
+            return;
+        }
+
+        const carChange = {
+            date: new Date(changeDate).getTime(),
+            oldCarFinalKm: oldCarFinalKm,
+            newCarStartKm: newCarStartKm
+        };
+
+        chrome.storage.local.get(['carChanges'], (result) => {
+            let carChanges = result.carChanges || [];
+            carChanges.push(carChange);
+            chrome.storage.local.set({ carChanges: carChanges }, () => {
+                statusMessage.textContent = 'Car change logged successfully!';
+                setTimeout(() => statusMessage.textContent = '', 3000);
+                carChangeForm.classList.add('hidden');
+                updateOverview();
+            });
+        });
+    });
+
+    /**
+     * Populates the year selector based on available data.
+     */
+    function populateYearSelector() {
+        chrome.storage.local.get(['mileageHistory'], (result) => {
+            const history = result.mileageHistory || [];
+            const years = new Set();
+            history.forEach(item => {
+                const date = new Date(item.timestamp);
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const trackingYear = month < 6 ? year - 1 : year;
+                years.add(trackingYear);
+            });
+
+            const currentYear = new Date().getFullYear();
+            const currentTrackingYear = new Date().getMonth() < 6 ? currentYear - 1 : currentYear;
+            years.add(currentTrackingYear);
+
+            yearSelector.innerHTML = '';
+            const sortedYears = Array.from(years).sort((a, b) => b - a);
+            sortedYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = `July ${year} - June ${year + 1}`;
+                yearSelector.appendChild(option);
+            });
+
+            yearSelector.value = currentTrackingYear;
+            updateOverview();
+        });
+    }
+
+    yearSelector.addEventListener('change', () => {
+        updateOverview();
+    });
 
     /**
      * Renders the history of saved odometer readings.
@@ -53,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 history.splice(indexToDelete, 1);
                 chrome.storage.local.set({ mileageHistory: history }, () => {
                     renderMileageHistory(history);
+                    populateYearSelector();
                     updateOverview();
                 });
             }
@@ -93,9 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusMessage.textContent = 'Odometer reading saved!';
                 setTimeout(() => statusMessage.textContent = '', 3000);
                 renderMileageHistory(history);
+                populateYearSelector();
                 updateOverview();
                 manualTotalKmInput.value = '';
-                // Reset date to today after saving
                 const today = new Date();
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -106,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /**
-     * Fetches work mileage data from the Shuttel portal by traversing Shadow DOM.
+     * Fetches work mileage data from the Shuttel portal.
      */
     fetchWorkMileageBtn.addEventListener('click', async () => {
         loadingIndicator.classList.remove('hidden');
@@ -130,10 +212,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (successfulResult) {
                 const shuttelData = successfulResult.result;
-                chrome.storage.local.set({ workData: shuttelData.chartData }, () => {
-                    statusMessage.textContent = 'Work mileage data updated successfully!';
-                    setTimeout(() => statusMessage.textContent = '', 3000);
-                    updateOverview();
+                chrome.storage.local.get(['workData'], (result) => {
+                    let workData = result.workData || {};
+                    Object.assign(workData, shuttelData.chartData);
+                    chrome.storage.local.set({ workData: workData }, () => {
+                        statusMessage.textContent = 'Work mileage data updated successfully!';
+                        setTimeout(() => statusMessage.textContent = '', 3000);
+                        updateOverview();
+                    });
                 });
             } else {
                 statusMessage.textContent = 'Could not find chart data. Is the mileage chart visible?';
@@ -147,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /**
-     * Injected function to get data by traversing the Shadow DOM based on user-provided path.
+     * Injected function to get data by traversing the Shadow DOM.
      */
     function extractChartDataFromShadowDOM() {
         const allSeriesData = {};
@@ -192,65 +278,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Calculates and updates the overview display with final robust logic.
+     * Calculates and updates the overview display for a given year.
      */
     function updateOverview() {
-        chrome.storage.local.get(['mileageHistory', 'workData'], (result) => {
-            let history = result.mileageHistory || [];
-            let workData = result.workData || {};
+        const selectedYear = parseInt(yearSelector.value);
+        if (isNaN(selectedYear)) return;
 
-            history.sort((a, b) => a.timestamp - b.timestamp);
+        chrome.storage.local.get(['mileageHistory', 'workData', 'carChanges'], (result) => {
+            const { mileageHistory, workData, carChanges } = result;
 
-            const today = new Date();
-            const startYear = today.getMonth() >= 6 ? today.getFullYear() : today.getFullYear() - 1; // 6 = July
-            const startOfTrackingYear = new Date(startYear, 6, 1);
-            startOfTrackingYear.setHours(0, 0, 0, 0);
+            const currentYearData = calculateMileage(mileageHistory, workData, carChanges, selectedYear);
+            displayYearData(currentYearData, {
+                totalSpan: overviewTotalSpan,
+                workSpan: overviewWorkSpan,
+                privateSpan: overviewPrivateSpan
+            });
 
-            const readingsBefore = history.filter(r => r.timestamp < startOfTrackingYear.getTime());
-            const readingsInPeriod = history.filter(r => r.timestamp >= startOfTrackingYear.getTime());
+            const lastYear = selectedYear - 1;
+            const lastYearOption = yearSelector.querySelector(`option[value="${lastYear}"]`);
 
-            let totalWorkKm = 0;
-            for (const key in workData) {
-                const [year, month] = key.split('-');
-                const workDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-                if (workDate.getTime() >= startOfTrackingYear.getTime()) {
-                    totalWorkKm += workData[key];
-                }
-            }
-            
-            // We can always show the work KM we've fetched.
-            overviewWorkSpan.textContent = `${totalWorkKm.toFixed(2)} km`;
-
-            if (readingsInPeriod.length === 0) {
-                // No readings in the current period, so we can't calculate driven/private km.
-                overviewTotalSpan.textContent = 'N/A (No recent reading)';
-                overviewPrivateSpan.textContent = 'N/A';
-                return;
-            }
-
-            const latestKm = readingsInPeriod[readingsInPeriod.length - 1].totalKm;
-            let baselineKm = 0;
-
-            if (readingsBefore.length > 0) {
-                // Ideal case: We have a reading from last year to compare against.
-                baselineKm = readingsBefore[readingsBefore.length - 1].totalKm;
+            if (lastYearOption) {
+                lastYearSummaryDiv.classList.remove('hidden');
+                const lastYearData = calculateMileage(mileageHistory, workData, carChanges, lastYear);
+                displayYearData(lastYearData, {
+                    totalSpan: lastYearTotalSpan,
+                    workSpan: lastYearWorkSpan,
+                    privateSpan: lastYearPrivateSpan
+                });
             } else {
-                // Case: User started tracking this year. Compare against the first reading of this year.
-                baselineKm = readingsInPeriod[0].totalKm;
+                lastYearSummaryDiv.classList.add('hidden');
             }
-            
-            const totalDriven = latestKm - baselineKm;
-            const privateKm = totalDriven - totalWorkKm;
-
-            overviewTotalSpan.textContent = `${totalDriven.toFixed(2)} km`;
-            overviewPrivateSpan.textContent = `${privateKm.toFixed(2)} km`;
         });
     }
 
+    function displayYearData(data, elements) {
+        elements.totalSpan.textContent = `${data.totalDriven.toFixed(2)} km`;
+        elements.workSpan.textContent = `${data.totalWorkKm.toFixed(2)} km`;
+        elements.privateSpan.textContent = `${data.privateKm.toFixed(2)} km`;
+    }
+
     // Initial load
-    chrome.storage.local.get(['mileageHistory', 'workData'], (result) => {
+    chrome.storage.local.get(['mileageHistory', 'workData', 'carChanges'], (result) => {
         renderMileageHistory(result.mileageHistory);
-        updateOverview();
+        populateYearSelector();
 
         const today = new Date();
         const yyyy = today.getFullYear();
