@@ -4,7 +4,7 @@ function calculateMileage(history, workData, carChanges, year) {
 
     const startOfTrackingYear = new Date(year, 6, 1); // July is month 6
     startOfTrackingYear.setHours(0, 0, 0, 0);
-    const endOfTrackingYear = new Date(year + 1, 6, 1); // End of June is start of next July
+    const endOfTrackingYear = new Date(year + 1, 6, 1);
     endOfTrackingYear.setHours(0, 0, 0, 0);
 
     // --- 1. Calculate Work KM for the selected year ---
@@ -17,7 +17,7 @@ function calculateMileage(history, workData, carChanges, year) {
         }
     }
 
-    // --- 2. Build a unified timeline of all odometer events ---
+    // --- 2. Build a unified timeline of ALL events ---
     let timeline = [];
     history.forEach(r => timeline.push({ timestamp: r.timestamp, km: r.totalKm, type: 'reading' }));
     carChanges.forEach(c => {
@@ -26,7 +26,7 @@ function calculateMileage(history, workData, carChanges, year) {
     });
     timeline.sort((a, b) => a.timestamp - b.timestamp);
 
-    // --- 3. Find the starting odometer value for the year ---
+    // --- 3. Filter timeline for the relevant period ---
     const readingsBefore = timeline.filter(e => e.timestamp < startOfTrackingYear.getTime());
     const readingsInPeriod = timeline.filter(e => e.timestamp >= startOfTrackingYear.getTime() && e.timestamp < endOfTrackingYear.getTime());
 
@@ -34,20 +34,25 @@ function calculateMileage(history, workData, carChanges, year) {
         return { totalDriven: 0, totalWorkKm, privateKm: -totalWorkKm };
     }
 
+    // --- 4. Determine the starting KM --- 
     let startKm = 0;
     if (readingsBefore.length > 0) {
         startKm = readingsBefore[readingsBefore.length - 1].km;
     } else {
-        startKm = readingsInPeriod[0].km; // First reading of the year is the baseline
+        // If no readings before, the first reading of the period is the true start.
+        // The loop will start from this baseline.
+        startKm = readingsInPeriod[0].km;
     }
 
-    // --- 4. Calculate total driven distance by summing segments ---
+    // --- 5. Calculate total driven distance by iterating through the year's events ---
     let totalDriven = 0;
     let lastKm = startKm;
 
+    // We iterate through the events of the period to sum up the distances.
     for (const event of readingsInPeriod) {
         if (event.type === 'start_car') {
-            lastKm = event.km; // Odometer resets to the new car's start
+            // Odometer resets to the new car's start. No distance is added for this event.
+            lastKm = event.km;
             continue;
         }
 
@@ -55,6 +60,8 @@ function calculateMileage(history, workData, carChanges, year) {
         if (distance > 0) {
             totalDriven += distance;
         }
+        
+        // Update the baseline for the next calculation.
         lastKm = event.km;
     }
 
