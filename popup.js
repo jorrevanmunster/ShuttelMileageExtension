@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const changeDateInput = document.getElementById('changeDate');
     const oldCarFinalKmInput = document.getElementById('oldCarFinalKm');
     const newCarStartKmInput = document.getElementById('newCarStartKm');
+    const clearCarChangesBtn = document.getElementById('clearCarChangesBtn');
 
     const overviewTotalSpan = document.getElementById('overviewTotal');
     const overviewWorkSpan = document.getElementById('overviewWork');
@@ -47,6 +48,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 carChangeForm.classList.add('hidden');
                 updateOverview();
             });
+        });
+    });
+
+    clearCarChangesBtn.addEventListener('click', () => {
+        chrome.storage.local.set({ carChanges: [] }, () => {
+            statusMessage.textContent = 'All car changes have been cleared.';
+            setTimeout(() => statusMessage.textContent = '', 3000);
+            updateOverview();
         });
     });
 
